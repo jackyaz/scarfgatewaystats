@@ -1,3 +1,3 @@
 #!/bin/sh
-/ScarfAPIStats/Scarf.sh  &
+/scarfgatewaystats/scarf.sh  &
 cron -f
