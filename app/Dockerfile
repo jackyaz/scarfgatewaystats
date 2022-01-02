@@ -1,7 +1,7 @@
 FROM python:3.9-slim-bullseye
 LABEL maintainer="Jack Yaz <jackyaz@outlook.com>"
 
-RUN apt-get update && apt-get -y install --no-install-recommends csvkit curl nano=5.4-2 \
+RUN apt-get update && apt-get -y install --no-install-recommends csvkit curl cron=3.0pl1-137 nano=5.4-2 \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/*
 
