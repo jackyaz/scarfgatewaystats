@@ -1,6 +1,6 @@
 #!/bin/sh
-START_DATE="2022-01-01"
-END_DATE="2022-01-31"
+START_DATE="$(date -d "1 hour ago" +"%F")"
+END_DATE="$(date -d "+1 days" +"%F")"
 
 curl -fsL -H "Authorization: Bearer $API_TOKEN" https://scarf.sh/api/v1/packages | jq -r '.[] | select(.libraryType=="file") | (.name + "," + .uuid)' | sort > packages
 
@@ -32,6 +32,7 @@ while IFS='' read -r line || [ -n "$line" ]; do
 					printf "%s\\n" "Download,package=$PACKAGE_NAME,filename=$(echo "$line2" | cut -f2 -d','),branch=$(echo "$line2" | cut -f3 -d','),downloadtype=$(echo "$line2" | cut -f4 -d','),originid=$(echo "$line2" | cut -f5 -d',') value=1 $TIMESTAMP" >> "/scarfgatewaystats/CSVs/$PACKAGE_NAME.influxdb"
 				fi
 			done < "/scarfgatewaystats/CSVs/$PACKAGE_NAME.csv"
+			echo "Sending $(wc -l < "/scarfgatewaystats/CSVs/$PACKAGE_NAME.influxdb") rows to InfluxDB"
 			gzip "/scarfgatewaystats/CSVs/$PACKAGE_NAME.influxdb"
 			curl -fsSL --retry 3 --connect-timeout 15 --output /dev/null -XPOST "http://$INFLUXDB_HOST:$INFLUXDB_PORT/$INFLUX_URL" \
 				--header "Authorization: Token $INFLUX_AUTHHEADER" --header "Accept-Encoding: gzip" \
