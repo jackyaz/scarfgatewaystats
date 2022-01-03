@@ -1,4 +1,4 @@
 #!/bin/sh
 env >> /etc/environment
-/scarfgatewaystats/scarf.sh &
+/scarfgatewaystats/scarf.sh
 cron -f
