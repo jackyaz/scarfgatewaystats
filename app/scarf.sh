@@ -32,7 +32,9 @@ while IFS='' read -r line || [ -n "$line" ]; do
 					printf "%s\\n" "Download,package=$PACKAGE_NAME,filename=$(echo "$line2" | cut -f2 -d','),branch=$(echo "$line2" | cut -f3 -d','),downloadtype=$(echo "$line2" | cut -f4 -d','),originid=$(echo "$line2" | cut -f5 -d',') value=1 $TIMESTAMP" >> "/scarfgatewaystats/CSVs/$PACKAGE_NAME.influxdb"
 				fi
 			done < "/scarfgatewaystats/CSVs/$PACKAGE_NAME.csv"
+			cp "/scarfgatewaystats/CSVs/$PACKAGE_NAME.influxdb" "/scarfgatewaystats/CSVs/$PACKAGE_NAME.csv"
 			echo "Sending $(wc -l < "/scarfgatewaystats/CSVs/$PACKAGE_NAME.influxdb") rows to InfluxDB"
+			rm -f "/scarfgatewaystats/CSVs/$PACKAGE_NAME.influxdb.gz"
 			gzip "/scarfgatewaystats/CSVs/$PACKAGE_NAME.influxdb"
 			curl -fsSL --retry 3 --connect-timeout 15 --output /dev/null -XPOST "http://$INFLUXDB_HOST:$INFLUXDB_PORT/$INFLUX_URL" \
 				--header "Authorization: Token $INFLUX_AUTHHEADER" --header "Accept-Encoding: gzip" \
