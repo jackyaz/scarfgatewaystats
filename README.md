@@ -17,6 +17,10 @@ This fork assumes you have InfluxDB and Grafana deployed already.
 
 Tested on Ubuntu with Docker and Python 3.9.
 
+## Screenshot
+
+![Grafana Dashboard](https://raw.githubusercontent.com/jackyaz/scarfgatewaystats/main/grafana-dashboard.PNG)
+
 ## Usage
 A Docker image for this app is available on [Docker Hub](https://hub.docker.com/r/jackyaz/scarfgatewaystats)
 
