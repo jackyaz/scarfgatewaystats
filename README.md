@@ -9,7 +9,7 @@ Template Path: /YazFi/{branch}/{downloadtype}/{filename}
 Host Url: https://raw.githubusercontent.com/jackyaz/YazFi/{branch}/{filename}
 ```
 
-Scarf Gateway data for the current day will be retrieved for all of your packages, running every hour on the hour.
+Scarf Gateway data for the current day will be retrieved for all of your packages, running at 5 past and 35 past every hour.
 
 Included is an example Grafana dashboard to visualise the captured data.
 

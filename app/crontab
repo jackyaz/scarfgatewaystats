@@ -15,5 +15,5 @@
 #
 # For more information see the manual pages of crontab(5) and cron(8)
 #
-# m  h  dom mon dow  command
-  0  *   *   *   *   /scarfgatewaystats/scarf.sh > /proc/1/fd/1 2>&1
+# m    h  dom mon dow  command
+ 5,35  *   *   *   *   /scarfgatewaystats/scarf.sh > /proc/1/fd/1 2>&1
