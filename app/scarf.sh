@@ -10,7 +10,7 @@ while IFS='' read -r line || [ -n "$line" ]; do
 	rm -f "/scarfgatewaystats/CSVs/$PACKAGE_NAME.csv"*
 	curl -fsL -o "/scarfgatewaystats/CSVs/$PACKAGE_NAME.csv.tmp" -H "Authorization: Bearer $API_TOKEN" "https://scarf.sh/api/v1/packages/$PACKAGE_UUID/events/$PACKAGE_NAME.csv?startDate=$START_DATE&endDate=$END_DATE"
 	if [ -f "/scarfgatewaystats/CSVs/$PACKAGE_NAME.csv.tmp" ]; then
-		echo "Processing stats for %s" "$PACKAGE_NAME"
+		echo "Processing stats for $PACKAGE_NAME"
 		if [ "$(wc -l < "/scarfgatewaystats/CSVs/$PACKAGE_NAME.csv.tmp")" -gt 1 ]; then
 			csvcut -c 5,8,9 "/scarfgatewaystats/CSVs/$PACKAGE_NAME.csv.tmp" | tail -n +2 > "/scarfgatewaystats/CSVs/$PACKAGE_NAME.csv.tmp2"
 			while IFS='' read -r line2 || [ -n "$line2" ]; do
