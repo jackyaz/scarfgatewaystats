@@ -69,7 +69,9 @@ ProcessPackageStats(){
 					ISERROR="true"
 				fi
 				rm -f "$file.gz"*
-				echo "$PACKAGE_NAME - $(cat "$PACKAGE_NAME.out")"
+				if [ -f  "$PACKAGE_NAME.out" ]; then
+					echo "$PACKAGE_NAME - $(cat "$PACKAGE_NAME.out")"
+				fi
 				rm -f "$PACKAGE_NAME.out"
 				COUNT=$((COUNT + 1))
 			done
