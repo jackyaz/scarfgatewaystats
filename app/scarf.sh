@@ -95,7 +95,12 @@ curl -fsL -H "Authorization: Bearer $API_TOKEN" https://scarf.sh/api/v1/packages
 while IFS='' read -r line || [ -n "$line" ]; do
 	name="$(echo "$line" | cut -f1 -d',')"
 	uuid="$(echo "$line" | cut -f2 -d',')"
-	ProcessPackageStats "$name" "$uuid" &
+	if echo "$EXCLUDED_PACKAGES" | grep -q "^$name," || echo "$EXCLUDED_PACKAGES" | grep -q "^$name$" || echo "$EXCLUDED_PACKAGES" | grep -q ",$name$" \
+|| echo "$EXCLUDED_PACKAGES" | grep -q ",$name," ; then
+		echo "$(date "+%FT%T") - Skipping excluded package: $name"
+	else
+		ProcessPackageStats "$name" "$uuid" &
+	fi
 done < packages
 
 wait
