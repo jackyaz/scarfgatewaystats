@@ -48,6 +48,7 @@ ProcessPackageStats(){
 			local FILELIST=""
 			if [ "$NUMROWS" -gt 5000 ]; then
 				echo "$PACKAGE_NAME - $(date "+%FT%T") - $NUMROWS is greater than 5000, splitting into parts" >> "$PACKAGE_NAME.out"
+				rm -f "$PACKAGE_DIR/split"*
 				split -l 5000 -d -e "$PACKAGE_DIR/$PACKAGE_NAME.influxdb" "$PACKAGE_DIR/split"
 				FILELIST="$(ls "$PACKAGE_DIR/split"*)"
 			else
