@@ -88,7 +88,7 @@ ProcessPackageStats(){
 	rm -f "$PACKAGE_DIR/$PACKAGE_NAME.csv.tmp"*
 }
 
-echo "$(date "+%FT%T") - Starting export of Scarf Gateway Stats"
+echo "Starting export of Scarf Gateway Stats"
 
 curl -fsL -H "Authorization: Bearer $API_TOKEN" https://scarf.sh/api/v1/packages | jq -r '.[] | select(.libraryType=="file") | (.name + "," + .uuid)' | sort > packages
 
@@ -97,7 +97,7 @@ while IFS='' read -r line || [ -n "$line" ]; do
 	uuid="$(echo "$line" | cut -f2 -d',')"
 	if echo "$EXCLUDED_PACKAGES" | grep -q "^$name," || echo "$EXCLUDED_PACKAGES" | grep -q "^$name$" || echo "$EXCLUDED_PACKAGES" | grep -q ",$name$" \
 || echo "$EXCLUDED_PACKAGES" | grep -q ",$name," ; then
-		echo "$(date "+%FT%T") - Skipping excluded package: $name"
+		echo "Skipping excluded package: $name"
 	else
 		ProcessPackageStats "$name" "$uuid" &
 	fi
@@ -107,4 +107,4 @@ wait
 
 rm -f packages
 
-echo "$(date "+%FT%T") - Completed export of Scarf Gateway Stats"
+echo "Completed export of Scarf Gateway Stats"
