@@ -15,7 +15,7 @@ ProcessPackageStats(){
 	curl -fsL -o "$PACKAGE_DIR/$PACKAGE_NAME.csv.tmp" -H "Authorization: Bearer $API_TOKEN" "https://scarf.sh/api/v1/packages/$PACKAGE_UUID/events/$PACKAGE_NAME.csv?startDate=$START_DATE&endDate=$END_DATE"
 	
 	if [ -f "$PACKAGE_DIR/$PACKAGE_NAME.csv.tmp" ]; then
-		echo "$PACKAGE_NAME - Processing stats"update
+		echo "$PACKAGE_NAME - Processing stats"
 		
 		if [ "$(wc -l < "$PACKAGE_DIR/$PACKAGE_NAME.csv.tmp")" -gt 1 ]; then
 			csvcut -c 5,8,9 "$PACKAGE_DIR/$PACKAGE_NAME.csv.tmp" | tail -n +2 > "$PACKAGE_DIR/$PACKAGE_NAME.csv.tmp2"
@@ -43,11 +43,11 @@ ProcessPackageStats(){
 			cp "$PACKAGE_DIR/$PACKAGE_NAME.influxdb" "$PACKAGE_DIR/$PACKAGE_NAME.csv"
 			
 			local NUMROWS="$(wc -l < "$PACKAGE_DIR/$PACKAGE_NAME.influxdb")"
-			echo "$PACKAGE_NAME - Sending $NUMROWS rows to InfluxDB"update
+			echo "$PACKAGE_NAME - Sending $NUMROWS rows to InfluxDB"
 			
 			local FILELIST=""
 			if [ "$NUMROWS" -gt 5000 ]; then
-				echo "$PACKAGE_NAME - $NUMROWS is greater than 5000, splitting into parts"update
+				echo "$PACKAGE_NAME - $NUMROWS is greater than 5000, splitting into parts"
 				rm -f "$PACKAGE_DIR/split"*
 				split -l 5000 -d -e "$PACKAGE_DIR/$PACKAGE_NAME.influxdb" "$PACKAGE_DIR/split"
 				FILELIST="$(ls "$PACKAGE_DIR/split"*)"
@@ -58,7 +58,7 @@ ProcessPackageStats(){
 			local COUNT=1
 			local ISERROR="false"
 			for file in $FILELIST; do
-				echo "$PACKAGE_NAME - Sending part $COUNT of $(echo "$FILELIST" | wc -w)"update
+				echo "$PACKAGE_NAME - Sending part $COUNT of $(echo "$FILELIST" | wc -w)"
 				rm -f "$file.gz"
 				gzip "$file"
 				curl -fsSL --retry 3 --connect-timeout 15 --output /dev/null -XPOST "http://$INFLUXDB_HOST:$INFLUXDB_PORT/$INFLUX_URL" \
@@ -76,12 +76,12 @@ ProcessPackageStats(){
 			
 			sed -i '1i Date,Filename,Branch,DownloadType,OriginID' "$PACKAGE_DIR/$PACKAGE_NAME.csv"
 			if [ "$ISERROR" = "false" ]; then
-				echo "$PACKAGE_NAME - Stats successfully sent to InfluxDB"update
+				echo "$PACKAGE_NAME - Stats successfully sent to InfluxDB"
 			else
-				echo "$PACKAGE_NAME - Stats sent to InfluxDB with some errors, please review above"update
+				echo "$PACKAGE_NAME - Stats sent to InfluxDB with some errors, please review above"
 			fi
 		else
-			echo "$PACKAGE_NAME - No stats found!"update
+			echo "$PACKAGE_NAME - No stats found!"
 		fi
 	fi
 	rm -f "$PACKAGE_DIR/split"*
