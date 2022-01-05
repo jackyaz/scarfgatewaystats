@@ -1,21 +1,29 @@
 #!/bin/sh
+#shellcheck disable=SC2181
 START_DATE="$(date -d "1 hour ago" +"%F")"
 END_DATE="$(date -d "+1 days" +"%F")"
 
 curl -fsL -H "Authorization: Bearer $API_TOKEN" https://scarf.sh/api/v1/packages | jq -r '.[] | select(.libraryType=="file") | (.name + "," + .uuid)' | sort > packages
 
 while IFS='' read -r line || [ -n "$line" ]; do
-	PACKAGE_NAME=$(echo "$line" | cut -f1 -d',')
-	PACKAGE_UUID=$(echo "$line" | cut -f2 -d',')
-	rm -f "/scarfgatewaystats/CSVs/$PACKAGE_NAME.csv"*
-	curl -fsL -o "/scarfgatewaystats/CSVs/$PACKAGE_NAME.csv.tmp" -H "Authorization: Bearer $API_TOKEN" "https://scarf.sh/api/v1/packages/$PACKAGE_UUID/events/$PACKAGE_NAME.csv?startDate=$START_DATE&endDate=$END_DATE"
-	if [ -f "/scarfgatewaystats/CSVs/$PACKAGE_NAME.csv.tmp" ]; then
+	PACKAGE_NAME="$(echo "$line" | cut -f1 -d',')"
+	PACKAGE_UUID="$(echo "$line" | cut -f2 -d',')"
+	PACKAGE_DIR="/scarfgatewaystats/CSVs/$PACKAGE_NAME"
+	
+	mkdir -p "$PACKAGE_DIR"
+	rm -f "$PACKAGE_DIR/$PACKAGE_NAME.csv"*
+	echo "Retrieving stats for $PACKAGE_NAME from Scarf"
+	curl -fsL -o "$PACKAGE_DIR/$PACKAGE_NAME.csv.tmp" -H "Authorization: Bearer $API_TOKEN" "https://scarf.sh/api/v1/packages/$PACKAGE_UUID/events/$PACKAGE_NAME.csv?startDate=$START_DATE&endDate=$END_DATE"
+	
+	if [ -f "$PACKAGE_DIR/$PACKAGE_NAME.csv.tmp" ]; then
 		echo "Processing stats for $PACKAGE_NAME"
-		if [ "$(wc -l < "/scarfgatewaystats/CSVs/$PACKAGE_NAME.csv.tmp")" -gt 1 ]; then
-			csvcut -c 5,8,9 "/scarfgatewaystats/CSVs/$PACKAGE_NAME.csv.tmp" | tail -n +2 > "/scarfgatewaystats/CSVs/$PACKAGE_NAME.csv.tmp2"
+		
+		if [ "$(wc -l < "$PACKAGE_DIR/$PACKAGE_NAME.csv.tmp")" -gt 1 ]; then
+			csvcut -c 5,8,9 "$PACKAGE_DIR/$PACKAGE_NAME.csv.tmp" | tail -n +2 > "$PACKAGE_DIR/$PACKAGE_NAME.csv.tmp2"
 			while IFS='' read -r line2 || [ -n "$line2" ]; do
-				printf "%s,%s,%s,%s,%s\\n" "$(echo "$line2" | cut -f1 -d',')" "$(echo "$line2" | cut -f2 -d',' | cut -f1 -d'&' | cut -f2 -d'=')" "$(echo "$line2" | cut -f2 -d',' | cut -f2 -d'&' | cut -f2 -d'=')" "$(echo "$line2" | cut -f2 -d',' | cut -f3 -d'&' | cut -f2 -d'=')" "$(echo "$line2" | cut -f3 -d',')" >> "/scarfgatewaystats/CSVs/$PACKAGE_NAME.csv"
-			done < "/scarfgatewaystats/CSVs/$PACKAGE_NAME.csv.tmp2"
+				printf "%s,%s,%s,%s,%s\\n" "$(echo "$line2" | cut -f1 -d',')" "$(echo "$line2" | cut -f2 -d',' | cut -f1 -d'&' | cut -f2 -d'=')" "$(echo "$line2" | cut -f2 -d',' | cut -f2 -d'&' | cut -f2 -d'=')" "$(echo "$line2" | cut -f2 -d',' | cut -f3 -d'&' | cut -f2 -d'=')" "$(echo "$line2" | cut -f3 -d',')" >> "$PACKAGE_DIR/$PACKAGE_NAME.csv"
+			done < "$PACKAGE_DIR/$PACKAGE_NAME.csv.tmp2"
+			
 			INFLUX_AUTHHEADER=""
 			if [ "$INFLUXDB_VERSION" = "1.8" ]; then
 				INFLUX_AUTHHEADER="${INFLUXDB_USERNAME}:${INFLUXDB_PASSWORD}"
@@ -25,30 +33,56 @@ while IFS='' read -r line || [ -n "$line" ]; do
 				INFLUX_URL="api/v2/write?bucket=$INFLUXDB_DB&precision=ns"
 			fi
 			
-			rm -f "/scarfgatewaystats/CSVs/$PACKAGE_NAME.influxdb"
+			rm -f "$PACKAGE_DIR/$PACKAGE_NAME.influxdb"
 			while IFS='' read -r line2 || [ -n "$line2" ]; do
-				TIMESTAMP=$(date -d"$(echo "$line2" | cut -f1 -d',')" -u "+%s%N")
+				TIMESTAMP="$(date -d"$(echo "$line2" | cut -f1 -d',')" -u "+%s%N")"
 				if [ -n "$(echo "$line2" | cut -f5 -d',')" ] && [ "$(echo "$line2" | cut -f5 -d',')" != "" ]; then
-					printf "%s\\n" "Download,package=$PACKAGE_NAME,filename=$(echo "$line2" | cut -f2 -d','),branch=$(echo "$line2" | cut -f3 -d','),downloadtype=$(echo "$line2" | cut -f4 -d','),originid=$(echo "$line2" | cut -f5 -d',') value=1 $TIMESTAMP" >> "/scarfgatewaystats/CSVs/$PACKAGE_NAME.influxdb"
+					printf "%s\\n" "Download,package=$PACKAGE_NAME,filename=$(echo "$line2" | cut -f2 -d','),branch=$(echo "$line2" | cut -f3 -d','),downloadtype=$(echo "$line2" | cut -f4 -d','),originid=$(echo "$line2" | cut -f5 -d',') value=1 $TIMESTAMP" >> "$PACKAGE_DIR/$PACKAGE_NAME.influxdb"
 				fi
-			done < "/scarfgatewaystats/CSVs/$PACKAGE_NAME.csv"
-			cp "/scarfgatewaystats/CSVs/$PACKAGE_NAME.influxdb" "/scarfgatewaystats/CSVs/$PACKAGE_NAME.csv"
-			echo "Sending $(wc -l < "/scarfgatewaystats/CSVs/$PACKAGE_NAME.influxdb") rows to InfluxDB"
-			rm -f "/scarfgatewaystats/CSVs/$PACKAGE_NAME.influxdb.gz"
-			gzip "/scarfgatewaystats/CSVs/$PACKAGE_NAME.influxdb"
-			curl -fsSL --retry 3 --connect-timeout 15 --output /dev/null -XPOST "http://$INFLUXDB_HOST:$INFLUXDB_PORT/$INFLUX_URL" \
-				--header "Authorization: Token $INFLUX_AUTHHEADER" --header "Accept-Encoding: gzip" \
-				--header "Content-Encoding: gzip" --header "Content-Type: text/plain; charset=utf-8" --header "Accept: application/json" \
-				--data-binary "@/scarfgatewaystats/CSVs/$PACKAGE_NAME.influxdb.gz"
-			cp "/scarfgatewaystats/CSVs/$PACKAGE_NAME.influxdb.gz" "/scarfgatewaystats/CSVs/$PACKAGE_NAME.influxdb.gz.bak"
-			rm -f "/scarfgatewaystats/CSVs/$PACKAGE_NAME.influxdb.gz"
-			sed -i '1i Date,Filename,Branch,DownloadType,OriginID' "/scarfgatewaystats/CSVs/$PACKAGE_NAME.csv"
-			echo "Successfully sent to InfluxDB"
+			done < "$PACKAGE_DIR/$PACKAGE_NAME.csv"
+			cp "$PACKAGE_DIR/$PACKAGE_NAME.influxdb" "$PACKAGE_DIR/$PACKAGE_NAME.csv"
+			
+			numrows="$(wc -l < "$PACKAGE_DIR/$PACKAGE_NAME.influxdb")"
+			echo "Sending $numrows rows to InfluxDB"
+			
+			filelist=""
+			if [ "$numrows" -gt 5000 ]; then
+				echo "$numrows is greater than 5000, splitting into parts"
+				split -l 5000 -d -e "$PACKAGE_DIR/$PACKAGE_NAME.influxdb" "$PACKAGE_DIR/split"
+				filelist="$(ls "$PACKAGE_DIR/split"*)"
+			else
+				filelist="$PACKAGE_DIR/$PACKAGE_NAME.influxdb"
+			fi
+			
+			count=1
+			errorencountered="false"
+			for file in $filelist; do
+				echo "Sending part $count of $(echo "$filelist" | wc -w)"
+				rm -f "$file.gz"
+				gzip "$file"
+				curl -fsSL --retry 3 --connect-timeout 15 --output /dev/null -XPOST "http://$INFLUXDB_HOST:$INFLUXDB_PORT/$INFLUX_URL" \
+					--header "Authorization: Token $INFLUX_AUTHHEADER" --header "Accept-Encoding: gzip" \
+					--header "Content-Encoding: gzip" --header "Content-Type: text/plain; charset=utf-8" --header "Accept: application/json" \
+					--data-binary "@$file.gz"
+				if [ $? -ne 0 ]; then
+					errorencountered="true"
+				fi
+				rm -f "$file.gz"*
+				count=$((count + 1))
+			done
+			
+			sed -i '1i Date,Filename,Branch,DownloadType,OriginID' "$PACKAGE_DIR/$PACKAGE_NAME.csv"
+			if [ "$errorencountered" = "false" ]; then
+				echo "Stats successfully sent to InfluxDB"
+			else
+				echo "Stats sent to InfluxDB with some errors, please review above"
+			fi
 		else
 			echo "No stats found!"
 		fi
 	fi
-	rm -f "/scarfgatewaystats/CSVs/$PACKAGE_NAME.csv.tmp"*
+	rm -f "$PACKAGE_DIR/split"*
+	rm -f "$PACKAGE_DIR/$PACKAGE_NAME.csv.tmp"*
 done < packages
 
 rm -f packages
