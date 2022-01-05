@@ -67,11 +67,9 @@ ProcessPackageStats(){
 					--data-binary "@$file.gz" 2> "$PACKAGE_NAME.out"
 				if [ $? -ne 0 ]; then
 					ISERROR="true"
-				fi
-				rm -f "$file.gz"*
-				if [ -f  "$PACKAGE_NAME.out" ]; then
 					echo "$PACKAGE_NAME - $(cat "$PACKAGE_NAME.out")"
 				fi
+				rm -f "$file.gz"*
 				rm -f "$PACKAGE_NAME.out"
 				COUNT=$((COUNT + 1))
 			done
