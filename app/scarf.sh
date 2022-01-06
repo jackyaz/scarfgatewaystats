@@ -36,7 +36,11 @@ ProcessPackageStats(){
 			while IFS='' read -r line2 || [ -n "$line2" ]; do
 				local TIMESTAMP="$(date -d"$(echo "$line2" | cut -f1 -d',')" -u "+%s%N")"
 				if [ -n "$(echo "$line2" | cut -f3 -d',')" ] && [ "$(echo "$line2" | cut -f3 -d',')" != "" ]; then
-					printf "Download,package=%s,%s value=1 $TIMESTAMP\\n" "$PACKAGE_NAME" "$(echo "$line2" | cut -f2 -d',' | sed 's/&/,/g')" >> "$PACKAGE_DIR/$PACKAGE_NAME.influxdb"
+					VALUE="1"
+					if echo "$line2" | grep -q "amtm-version"; then
+						VALUE="0.5"
+					fi
+					printf "Download,package=%s,%s value=%s $TIMESTAMP\\n" "$PACKAGE_NAME" "$(echo "$line2" | cut -f2 -d',' | sed 's/&/,/g')" "$VALUE" >> "$PACKAGE_DIR/$PACKAGE_NAME.influxdb"
 				fi
 			done < "$PACKAGE_DIR/$PACKAGE_NAME.csv"
 			
