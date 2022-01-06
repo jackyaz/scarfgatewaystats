@@ -17,29 +17,28 @@ ProcessPackageStats(){
 		echo "$PACKAGE_NAME - Processing stats"
 		
 		if [ "$(wc -l < "$PACKAGE_DIR/$PACKAGE_NAME.csv.tmp")" -gt 1 ]; then
-			csvcut -c 5,8,9 "$PACKAGE_DIR/$PACKAGE_NAME.csv.tmp" | tail -n +2 > "$PACKAGE_DIR/$PACKAGE_NAME.csv.tmp2"
-			while IFS='' read -r line2 || [ -n "$line2" ]; do
-				printf "%s,%s,%s,%s,%s\\n" "$(echo "$line2" | cut -f1 -d',')" "$(echo "$line2" | cut -f2 -d',' | cut -f1 -d'&' | cut -f2 -d'=')" "$(echo "$line2" | cut -f2 -d',' | cut -f2 -d'&' | cut -f2 -d'=')" "$(echo "$line2" | cut -f2 -d',' | cut -f3 -d'&' | cut -f2 -d'=')" "$(echo "$line2" | cut -f3 -d',')" >> "$PACKAGE_DIR/$PACKAGE_NAME.csv"
-			done < "$PACKAGE_DIR/$PACKAGE_NAME.csv.tmp2"
-			
-			local INFLUX_AUTHHEADER=""
-			local INFLUX_URL=""
-			if [ "$INFLUXDB_VERSION" = "1.8" ]; then
-				local INFLUX_AUTHHEADER="${INFLUXDB_USERNAME}:${INFLUXDB_PASSWORD}"
-				local INFLUX_URL="write?db=$INFLUXDB_DB&precision=ns"
-			elif [ "$INFLUXDB_VERSION" = "2.0" ]; then
-				local INFLUX_AUTHHEADER="$INFLUXDB_APITOKEN"
-				local INFLUX_URL="api/v2/write?bucket=$INFLUXDB_DB&precision=ns"
+			if [ -z "$2" ]; then
+				if [ -f "$PACKAGE_DIR/$PACKAGE_NAME.bak" ]; then
+					if [ "$(md5sum "$PACKAGE_DIR/$PACKAGE_NAME.csv.tmp" | awk '{print $1}')" = "$(md5sum "$PACKAGE_DIR/$PACKAGE_NAME.bak" | awk '{print $1}')" ]; then
+						echo "$PACKAGE_NAME - No changes detected, skipping"
+						rm -f "$PACKAGE_DIR/$PACKAGE_NAME.influxdb"
+						rm -f "$PACKAGE_DIR/split"*
+						rm -f "$PACKAGE_DIR/$PACKAGE_NAME.csv"*
+						return 1
+					fi
+				fi
 			fi
 			
+			cp -a "$PACKAGE_DIR/$PACKAGE_NAME.csv.tmp" "$PACKAGE_DIR/$PACKAGE_NAME.bak"
+			
+			csvcut -c 5,8,9 "$PACKAGE_DIR/$PACKAGE_NAME.csv.tmp" | tail -n +2 > "$PACKAGE_DIR/$PACKAGE_NAME.csv"
 			rm -f "$PACKAGE_DIR/$PACKAGE_NAME.influxdb"
 			while IFS='' read -r line2 || [ -n "$line2" ]; do
 				local TIMESTAMP="$(date -d"$(echo "$line2" | cut -f1 -d',')" -u "+%s%N")"
-				if [ -n "$(echo "$line2" | cut -f5 -d',')" ] && [ "$(echo "$line2" | cut -f5 -d',')" != "" ]; then
-					printf "%s\\n" "Download,package=$PACKAGE_NAME,filename=$(echo "$line2" | cut -f2 -d','),branch=$(echo "$line2" | cut -f3 -d','),downloadtype=$(echo "$line2" | cut -f4 -d','),originid=$(echo "$line2" | cut -f5 -d',') value=1 $TIMESTAMP" >> "$PACKAGE_DIR/$PACKAGE_NAME.influxdb"
+				if [ -n "$(echo "$line2" | cut -f3 -d',')" ] && [ "$(echo "$line2" | cut -f3 -d',')" != "" ]; then
+					printf "Download,package=%s,%s value=1 $TIMESTAMP\\n" "$PACKAGE_NAME" "$(echo "$line2" | cut -f2 -d',' | sed 's/&/,/g')" >> "$PACKAGE_DIR/$PACKAGE_NAME.influxdb"
 				fi
 			done < "$PACKAGE_DIR/$PACKAGE_NAME.csv"
-			cp "$PACKAGE_DIR/$PACKAGE_NAME.influxdb" "$PACKAGE_DIR/$PACKAGE_NAME.csv"
 			
 			local NUMROWS="$(wc -l < "$PACKAGE_DIR/$PACKAGE_NAME.influxdb")"
 			echo "$PACKAGE_NAME - Sending $NUMROWS rows to InfluxDB"
@@ -52,6 +51,16 @@ ProcessPackageStats(){
 				FILELIST="$(ls "$PACKAGE_DIR/split"*)"
 			else
 				FILELIST="$PACKAGE_DIR/$PACKAGE_NAME.influxdb"
+			fi
+			
+			local INFLUX_AUTHHEADER=""
+			local INFLUX_URL=""
+			if [ "$INFLUXDB_VERSION" = "1.8" ]; then
+				local INFLUX_AUTHHEADER="${INFLUXDB_USERNAME}:${INFLUXDB_PASSWORD}"
+				local INFLUX_URL="write?db=$INFLUXDB_DB&precision=ns"
+			elif [ "$INFLUXDB_VERSION" = "2.0" ]; then
+				local INFLUX_AUTHHEADER="$INFLUXDB_APITOKEN"
+				local INFLUX_URL="api/v2/write?bucket=$INFLUXDB_DB&precision=ns"
 			fi
 			
 			local COUNT=1
@@ -73,7 +82,6 @@ ProcessPackageStats(){
 				COUNT=$((COUNT + 1))
 			done
 			
-			sed -i '1i Date,Filename,Branch,DownloadType,OriginID' "$PACKAGE_DIR/$PACKAGE_NAME.csv"
 			if [ "$ISERROR" = "false" ]; then
 				echo "$PACKAGE_NAME - Stats successfully sent to InfluxDB"
 			else
@@ -84,7 +92,7 @@ ProcessPackageStats(){
 		fi
 	fi
 	rm -f "$PACKAGE_DIR/split"*
-	rm -f "$PACKAGE_DIR/$PACKAGE_NAME.csv.tmp"*
+	rm -f "$PACKAGE_DIR/$PACKAGE_NAME.csv"*
 }
 
 echo "Starting export of Scarf Gateway Stats"
@@ -127,7 +135,11 @@ while IFS='' read -r line || [ -n "$line" ]; do
 || echo "$EXCLUDED_PACKAGES" | grep -q ",$name," ; then
 		: # do nothing
 	else
-		ProcessPackageStats "$name" &
+		if [ "$1" = "force" ]; then
+			ProcessPackageStats "$name" "force "&
+		else
+			ProcessPackageStats "$name" &
+		fi
 	fi
 done < packages
 
