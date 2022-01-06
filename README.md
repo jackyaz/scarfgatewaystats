@@ -29,6 +29,7 @@ A Docker image for this app is available on [Docker Hub](https://hub.docker.com/
 docker run -d \
   --name=scarfgatewaystats \
   -e API_TOKEN="aaabbbccc" \
+  -e SCARF_USERNAME="dddeeefff" \
   -e EXCLUDED_PACKAGES="mypackagename,otherpackage" \
   -e INFLUXDB_VERSION="1.8" \
   -e INFLUXDB_USERNAME="user" \
@@ -49,6 +50,7 @@ The Docker images supports some parameters. These parameters are separated by a 
 | Env | Function |
 | :----: | --- |
 | `API_TOKEN="aaabbbccc"` | Scarf Gateway API token |
+| `SCARF_USERNAME="dddeeefff"` | Scarf Gateway API token |
 | `EXCLUDED_PACKAGES="mypackagename,otherpackage"` | List of Scarf packages to exclude from processing |
 | `INFLUXDB_VERSION="1.8"` | Version of InfluxDB you are exporting to, either 1.8 or 2.0 |
 | `INFLUXDB_USERNAME="user"` | Username of the InfluxDB user to authenticate as (1.8) |

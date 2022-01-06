@@ -7,12 +7,11 @@ END_DATE="$(date -d "+1 days" +"%F")"
 
 ProcessPackageStats(){
 	local PACKAGE_NAME="$1"
-	local PACKAGE_UUID="$2"
 	local PACKAGE_DIR="/scarfgatewaystats/CSVs/$PACKAGE_NAME"
 	mkdir -p "$PACKAGE_DIR"
 	rm -f "$PACKAGE_DIR/$PACKAGE_NAME.csv"*
-	echo "$PACKAGE_NAME - Retrieving stats from Scarf"
-	curl -fsL -o "$PACKAGE_DIR/$PACKAGE_NAME.csv.tmp" -H "Authorization: Bearer $API_TOKEN" "https://scarf.sh/api/v1/packages/$PACKAGE_UUID/events/$PACKAGE_NAME.csv?startDate=$START_DATE&endDate=$END_DATE"
+	
+	grep "$PACKAGE_NAME" /scarfgatewaystats/CSVs/events.csv > "$PACKAGE_DIR/$PACKAGE_NAME.csv.tmp"
 	
 	if [ -f "$PACKAGE_DIR/$PACKAGE_NAME.csv.tmp" ]; then
 		echo "$PACKAGE_NAME - Processing stats"
@@ -90,21 +89,51 @@ ProcessPackageStats(){
 
 echo "Starting export of Scarf Gateway Stats"
 
-curl -fsL -H "Authorization: Bearer $API_TOKEN" https://scarf.sh/api/v1/packages | jq -r '.[] | select(.libraryType=="file") | (.name + "," + .uuid)' | sort > packages
+curl -fsL -H "Authorization: Bearer $API_TOKEN" https://scarf.sh/api/v1/packages | jq -r '.[] | select(.libraryType=="file") | .name' | sort > packages
+
+PACKAGE_SELECTOR=""
+
+if [ -z "$EXCLUDED_PACKAGES" ] || [ "$EXCLUDED_PACKAGES" = "" ]; then
+	PACKAGE_SELECTOR=""
+else
+	PACKAGE_SELECTOR="&selector="
+	while IFS='' read -r line || [ -n "$line" ]; do
+		name="$line"
+		if echo "$EXCLUDED_PACKAGES" | grep -q "^$name," || echo "$EXCLUDED_PACKAGES" | grep -q "^$name$" || echo "$EXCLUDED_PACKAGES" | grep -q ",$name$" \
+	|| echo "$EXCLUDED_PACKAGES" | grep -q ",$name," ; then
+			echo "Skipping excluded package: $name"
+		else
+			PACKAGE_SELECTOR="$PACKAGE_SELECTOR$name,"
+		fi
+	done < packages
+	PACKAGE_SELECTOR="$(echo "$PACKAGE_SELECTOR" | sed 's/,$//')"
+fi
+
+echo "Retrieving data from Scarf API, please be patient"
+curl -fsSL -o "/scarfgatewaystats/CSVs/events.csv" -H "Authorization: Bearer $API_TOKEN" "https://scarf.sh/api/v2/${SCARF_USERNAME}/packages/events/events.csv?startDate=${START_DATE}&endDate=${END_DATE}${PACKAGE_SELECTOR}"
+
+if [ $? -ne 0 ]; then
+	echo "Error occured when retrieving data from Scarf API"
+	rm -f packages
+	rm -f /scarfgatewaystats/CSVs/events.csv
+	exit 1
+else
+	echo "Successfully retrived data from Scarf API"
+fi
 
 while IFS='' read -r line || [ -n "$line" ]; do
 	name="$(echo "$line" | cut -f1 -d',')"
-	uuid="$(echo "$line" | cut -f2 -d',')"
 	if echo "$EXCLUDED_PACKAGES" | grep -q "^$name," || echo "$EXCLUDED_PACKAGES" | grep -q "^$name$" || echo "$EXCLUDED_PACKAGES" | grep -q ",$name$" \
 || echo "$EXCLUDED_PACKAGES" | grep -q ",$name," ; then
-		echo "Skipping excluded package: $name"
+		: # do nothing
 	else
-		ProcessPackageStats "$name" "$uuid" &
+		ProcessPackageStats "$name" &
 	fi
 done < packages
 
 wait
 
 rm -f packages
+rm -f /scarfgatewaystats/CSVs/events.csv
 
 echo "Completed export of Scarf Gateway Stats"
