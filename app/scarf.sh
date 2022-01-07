@@ -25,11 +25,16 @@ ProcessPackageStats(){
 						rm -f "$PACKAGE_DIR/split"*
 						rm -f "$PACKAGE_DIR/$PACKAGE_NAME.csv"*
 						return 1
+					else
+						awk 'NR==FNR{a[$0];next} !($0 in a)' "$PACKAGE_DIR/$PACKAGE_NAME.bak" "$PACKAGE_DIR/$PACKAGE_NAME.csv.tmp" > "$PACKAGE_DIR/$PACKAGE_NAME.csv.tmp2"
 					fi
 				fi
 			fi
 			
 			cp -a "$PACKAGE_DIR/$PACKAGE_NAME.csv.tmp" "$PACKAGE_DIR/$PACKAGE_NAME.bak"
+			if [ -f "$PACKAGE_DIR/$PACKAGE_NAME.csv.tmp2" ]; then
+				mv "$PACKAGE_DIR/$PACKAGE_NAME.csv.tmp2" "$PACKAGE_DIR/$PACKAGE_NAME.csv.tmp"
+			fi
 			
 			csvcut -c 5,8,9 "$PACKAGE_DIR/$PACKAGE_NAME.csv.tmp" | tail -n +2 > "$PACKAGE_DIR/$PACKAGE_NAME.csv"
 			rm -f "$PACKAGE_DIR/$PACKAGE_NAME.influxdb"
