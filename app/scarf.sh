@@ -10,12 +10,12 @@ ProcessPackageStats(){
 	local PACKAGE_DIR="/scarfgatewaystats/CSVs/$PACKAGE_NAME"
 	mkdir -p "$PACKAGE_DIR"
 	rm -f "$PACKAGE_DIR/$PACKAGE_NAME.csv"*
-	
+
 	grep "$PACKAGE_NAME" /scarfgatewaystats/CSVs/events.csv > "$PACKAGE_DIR/$PACKAGE_NAME.csv.tmp"
-	
+
 	if [ -f "$PACKAGE_DIR/$PACKAGE_NAME.csv.tmp" ]; then
 		echo "$PACKAGE_NAME - Processing stats"
-		
+
 		if [ "$(wc -l < "$PACKAGE_DIR/$PACKAGE_NAME.csv.tmp")" -gt 1 ]; then
 			if [ -z "$2" ]; then
 				if [ -f "$PACKAGE_DIR/$PACKAGE_NAME.bak" ]; then
@@ -30,12 +30,12 @@ ProcessPackageStats(){
 					fi
 				fi
 			fi
-			
+
 			cp -a "$PACKAGE_DIR/$PACKAGE_NAME.csv.tmp" "$PACKAGE_DIR/$PACKAGE_NAME.bak"
 			if [ -f "$PACKAGE_DIR/$PACKAGE_NAME.csv.tmp2" ]; then
 				mv "$PACKAGE_DIR/$PACKAGE_NAME.csv.tmp2" "$PACKAGE_DIR/$PACKAGE_NAME.csv.tmp"
 			fi
-			
+
 			csvcut -c 5,8,9 "$PACKAGE_DIR/$PACKAGE_NAME.csv.tmp" | tail -n +2 > "$PACKAGE_DIR/$PACKAGE_NAME.csv"
 			rm -f "$PACKAGE_DIR/$PACKAGE_NAME.influxdb"
 			while IFS='' read -r line2 || [ -n "$line2" ]; do
@@ -48,10 +48,10 @@ ProcessPackageStats(){
 					printf "Download,package=%s,originid=%s,%s value=%s $TIMESTAMP\\n" "$PACKAGE_NAME" "$(echo "$line2" | cut -f3 -d',')" "$(echo "$line2" | cut -f2 -d',' | sed 's/&/,/g')" "$VALUE" >> "$PACKAGE_DIR/$PACKAGE_NAME.influxdb"
 				fi
 			done < "$PACKAGE_DIR/$PACKAGE_NAME.csv"
-			
+
 			local NUMROWS="$(wc -l < "$PACKAGE_DIR/$PACKAGE_NAME.influxdb")"
 			echo "$PACKAGE_NAME - Sending $NUMROWS rows to InfluxDB"
-			
+
 			local FILELIST=""
 			if [ "$NUMROWS" -gt 5000 ]; then
 				echo "$PACKAGE_NAME - $NUMROWS is greater than 5000, splitting into parts"
@@ -61,7 +61,7 @@ ProcessPackageStats(){
 			else
 				FILELIST="$PACKAGE_DIR/$PACKAGE_NAME.influxdb"
 			fi
-			
+
 			local INFLUX_AUTHHEADER=""
 			local INFLUX_URL=""
 			if [ "$INFLUXDB_VERSION" = "1.8" ]; then
@@ -71,7 +71,7 @@ ProcessPackageStats(){
 				local INFLUX_AUTHHEADER="$INFLUXDB_APITOKEN"
 				local INFLUX_URL="api/v2/write?bucket=$INFLUXDB_DB&precision=ns"
 			fi
-			
+
 			local COUNT=1
 			local ISERROR="false"
 			for file in $FILELIST; do
@@ -90,7 +90,7 @@ ProcessPackageStats(){
 				rm -f "$PACKAGE_NAME.out"
 				COUNT=$((COUNT + 1))
 			done
-			
+
 			if [ "$ISERROR" = "false" ]; then
 				echo "$PACKAGE_NAME - Stats successfully sent to InfluxDB"
 			else
