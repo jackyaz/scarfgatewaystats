@@ -106,14 +106,14 @@ ProcessPackageStats(){
 
 echo "Starting export of Scarf Gateway Stats"
 
-curl -fsL -H "Authorization: Bearer $API_TOKEN" https://scarf.sh/api/v1/packages | jq -r '.[] | select(.libraryType=="file") | .name' | sort > packages
+curl -fsL -H "Authorization: Bearer $API_TOKEN" "https://api.scarf.sh/v2/packages/${SCARF_USERNAME}" | jq -r '.results[] | select(.type=="file") | .name' | sort > packages
 
 PACKAGE_SELECTOR=""
 
 if [ -z "$EXCLUDED_PACKAGES" ] || [ "$EXCLUDED_PACKAGES" = "" ]; then
 	PACKAGE_SELECTOR=""
 else
-	PACKAGE_SELECTOR="&selector="
+	PACKAGE_SELECTOR="&query="
 	while IFS='' read -r line || [ -n "$line" ]; do
 		name="$line"
 		if echo "$EXCLUDED_PACKAGES" | grep -q "^$name," || echo "$EXCLUDED_PACKAGES" | grep -q "^$name$" || echo "$EXCLUDED_PACKAGES" | grep -q ",$name$" \
@@ -127,7 +127,7 @@ else
 fi
 
 echo "Retrieving data from Scarf API, please be patient"
-curl -fsSL -o "/scarfgatewaystats/CSVs/events.csv" -H "Authorization: Bearer $API_TOKEN" "https://scarf.sh/api/v2/${SCARF_USERNAME}/packages/events/events.csv?startDate=${START_DATE}&endDate=${END_DATE}${PACKAGE_SELECTOR}"
+curl -fsSL -o "/scarfgatewaystats/CSVs/events.csv" -H "Authorization: Bearer $API_TOKEN" "https://api.scarf.sh/v2/packages/${SCARF_USERNAME}/events?start_date=${START_DATE}&end_date=${END_DATE}${PACKAGE_SELECTOR}"
 
 if [ $? -ne 0 ]; then
 	echo "Error occured when retrieving data from Scarf API"
