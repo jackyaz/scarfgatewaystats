@@ -106,7 +106,7 @@ ProcessPackageStats(){
 
 echo "Starting export of Scarf Gateway Stats"
 
-curl -fsL -H "Authorization: Bearer $API_TOKEN" "https://api.scarf.sh/v2/packages/${SCARF_USERNAME}" | jq -r '.results[] | select(.type=="file") | .name' | sort > packages
+curl -fsL -H "Authorization: Bearer $API_TOKEN" "https://api.scarf.sh/v2/packages/${SCARF_USERNAME}?per_page=100" | jq -r '.results[] | select(.type=="file") | .name' | sort > packages
 
 PACKAGE_SELECTOR=""
 
