@@ -1,7 +1,7 @@
-FROM debian:bullseye-slim
+FROM debian:bookworm-slim
 LABEL maintainer="Jack Yaz <jackyaz@outlook.com>"
 
-RUN apt update && apt -y install --no-install-recommends csvkit=1.0.5-2 curl=7.74.0-1.3+deb11u7 cron=3.0pl1-137 nano=5.4-2+deb11u2 jq=1.6-2.1 ca-certificates=20210119 \
+RUN apt update && apt -y install --no-install-recommends csvkit curl cron nano jq ca-certificates \
  && apt clean \
  && rm -rf /var/lib/apt/lists/*
 
