@@ -36,7 +36,7 @@ ProcessPackageStats(){
 				mv "$PACKAGE_DIR/$PACKAGE_NAME.csv.tmp2" "$PACKAGE_DIR/$PACKAGE_NAME.csv.tmp"
 			fi
 
-			csvcut -c 5,8,9 "$PACKAGE_DIR/$PACKAGE_NAME.csv.tmp" | tail -n +2 > "$PACKAGE_DIR/$PACKAGE_NAME.csv"
+			csvcut -c 5,9,10 "$PACKAGE_DIR/$PACKAGE_NAME.csv.tmp" | tail -n +2 > "$PACKAGE_DIR/$PACKAGE_NAME.csv"
 			rm -f "$PACKAGE_DIR/$PACKAGE_NAME.influxdb"
 			while IFS='' read -r line2 || [ -n "$line2" ]; do
 				local TIMESTAMP="$(date -d"$(echo "$line2" | cut -f1 -d',')" -u "+%s%N")"
